@@ -262,7 +262,7 @@ install_with_rollback()
 
 update_snapper()
 {
-    snapper --jsonout --no-dbus list --disable-used-space > "$snapperfile"
+	snapper --jsonout --no-dbus list --disable-used-space > "$snapperfile"
 }
 
 set_snapper_title_and_sortkey()
@@ -375,6 +375,7 @@ install_kernel()
 
 	title="${os_release_PRETTY_NAME:-Linux $kernel_version}"
 	# TW pretty name does not include the version
+	# shellcheck disable=SC2154
 	[ -n "$os_release_VERSION" ] || title="$title $os_release_VERSION_ID"
 	# shellcheck disable=SC2154
 	sort_key="$os_release_ID"
@@ -624,9 +625,9 @@ show_snapper()
 }
 
 calc_chksum() {
-    # shellcheck disable=SC2046
-    set -- $(sha1sum "$1")
-    chksum="$1"
+	# shellcheck disable=SC2046
+	set -- $(sha1sum "$1")
+	chksum="$1"
 }
 
 # map with kernel version as key and checksum as value
@@ -858,7 +859,7 @@ install_sdboot()
 
 	[ -s "$boot_root/loader/entries.srel" ] || echo type1 > "$boot_root/loader/entries.srel"
 
-    	[ -e "$boot_root/loader/loader.conf" ] || echo -e "#timeout 3\n#console-mode keep\n" > "$boot_root/loader/loader.conf"
+	[ -e "$boot_root/loader/loader.conf" ] || echo -e "#timeout 3\n#console-mode keep\n" > "$boot_root/loader/loader.conf"
 
 	# Create boot menu entry if it does not exist
 	[ -n "$arg_no_variables" ] || efibootmgr | grep -q 'Boot.*openSUSE Boot Manager' || efibootmgr -q --create --disk "$drive" --part "$partno" --label "openSUSE Boot Manager" --loader "$entry" || true
@@ -1027,8 +1028,8 @@ getopttmp=$(getopt -o hc:v --long help,flicker,verbose,esp-path:,entry-token:,ar
 eval set -- "$getopttmp"
 
 while true ; do
-        case "$1" in
-                -h|--help) helpandquit ;;
+	case "$1" in
+		-h|--help) helpandquit ;;
 		--flicker) dialog_altenate_screen=--keep-tite; shift ;;
 		-v|--verbose) verbose=$((++verbose)); shift ;;
 		--esp-path) arg_esp_path="$2"; shift 2 ;;
@@ -1037,9 +1038,9 @@ while true ; do
 		--image) image="$2"; shift 2 ;;
 		--no-variables) arg_no_variables=1; shift ;;
 		--no-reuse-initrd) arg_no_reuse_initrd=1; shift ;;
-                --) shift ; break ;;
-                *) echo "Internal error!" ; exit 1 ;;
-        esac
+		--) shift ; break ;;
+		*) echo "Internal error!" ; exit 1 ;;
+	esac
 done
 
 case "$1" in
@@ -1077,46 +1078,38 @@ settle_entry_token
 root_snapshot="${root_subvol#@/.snapshots/}"
 root_snapshot="${root_snapshot%/snapshot}"
 
-if [ "$1" = "install" ]; then
-	install_sdboot "${2:-$root_snapshot}"
-elif [ "$1" = "needs-update" ]; then
-	sdboot_needs_update "${2:-$root_snapshot}"
-elif [ "$1" = "update" ]; then
-	if sdboot_needs_update "${2:-$root_snapshot}"; then install_sdboot "${2:-$root_snapshot}"; else :; fi
-elif [ "$1" = "force-update" ]; then
-	if is_installed; then install_sdboot "${2:-$root_snapshot}"; else :; fi
-elif [ "$1" = "add-kernel" ]; then
-	install_kernel "${3:-$root_subvol}" "$2"
-elif [ "$1" = "add-all-kernels" ]; then
-	install_all_kernels "${2:-$root_snapshot}"
-elif [ "$1" = "remove-kernel" ]; then
-	remove_kernel "${3:-$root_subvol}" "$2"
-elif [ "$1" = "remove-all-kernels" ]; then
-	remove_all_kernels "${2:-$root_snapshot}"
-elif [ "$1" = "set-default-snapshot" ]; then
-	set_default_snapshot "${2:-$root_snapshot}"
-elif [ "$1" = "is-installed" ]; then
-	if is_installed; then
-		log_info "systemd-boot was installed using sdbootutil"
-		exit 0
-	else
-		log_info "not installed using this tool"
-		exit 1
-	fi
-elif [ "$1" = "list-kernels" ]; then
-	list_kernels "${2:-$root_snapshot}"
-elif [ "$1" = "is-bootable" ]; then
-	is_bootable "${2:-$root_snapshot}"
-elif [ "$1" = "update-predictions" ]; then
-	update_predictions=1
-elif [ "$1" = "kernels" ]; then
-	show_kernels "${2:-$root_snapshot}"
-elif [ "$1" = "snapshots" ]; then
-	show_snapper
-elif [ "$1" = "entries" ]; then
-	show_entries
-else
-	main_menu
-fi
+
+case "$1" in 
+	"install")				install_sdboot "${2:-$root_snapshot}";;
+	"needs-update")			sdboot_needs_update "${2:-$root_snapshot}";;
+	"update")
+		if sdboot_needs_update "${2:-$root_snapshot}"; then 
+			install_sdboot "${2:-$root_snapshot}"
+		fi;;
+	"force-update")
+		if is_installed; then
+			install_sdboot "${2:-$root_snapshot}"
+		fi;;
+	"add-kernel")			install_kernel "${3:-$root_subvol}" "$2";;
+	"add-all-kernels")		install_all_kernels "${2:-$root_snapshot}";;
+	"remove-kernel")		remove_kernel "${3:-$root_subvol}" "$2";;
+	"remove-all-kernels")	remove_all_kernels "${2:-$root_snapshot}";;
+	"set-default-snapshot")	set_default_snapshot "${2:-$root_snapshot}";;
+	"is-installed")
+		if is_installed; then
+			log_info "systemd-boot was installed using sdbootutil"
+			exit 0
+		else
+			log_info "not installed using this tool"
+			exit 1
+		fi;;
+	"list-kernels")			list_kernels "${2:-$root_snapshot}";;
+	"is-bootable")			is_bootable "${2:-$root_snapshot}";;
+	"update-predictions")	update_predictions=1;;
+	"kernels")				show_kernels "${2:-$root_snapshot}";;
+	"snapshots")			show_snapper;;
+	"entries")				show_entries;;
+	*)						main_menu
+esac
 
 [ -z "$update_predictions" ] || generate_tpm2_predictions
